@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
+import json
 from json import dumps
 from kafka import KafkaProducer
 
@@ -21,11 +22,16 @@ class Data(BaseModel):
     downloaded: int
     save_location: str
 
+producer = KafkaProducer(
+        bootstrap_servers = "172.21.225.129:9092",
+        value_serializer = lambda x: json.dumps(x).encode("utf-8")
+    )
+
 
 @app.post("/pin/")
 def get_db_row(item: Data):
     data = dict(item)
-    return item
+    producer.send("PinterestPipeline", data)
 
 
 if __name__ == '__main__':
