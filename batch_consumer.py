@@ -39,16 +39,16 @@ class Consumer():
 
         for number,batch_message in enumerate(batch_consumer):
 
-
+            print(batch_message.value)
             data_object = self.s3_resource.Object(self.s3_bucket_name, f"message_{number}.json")
             data_object.put(Body=(bytes(json.dumps(batch_message.value).encode("utf-8"))))          
-            
+
 
 
 
 if __name__ == '__main__':
     test = Consumer()
-    test.create_bucket()
+    #test.create_bucket()
     test.dump_data()
 
     
