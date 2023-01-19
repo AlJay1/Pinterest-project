@@ -85,7 +85,7 @@ class Streaming():
                         df.select(sum("follower_count")).show()
                         df.groupBy("category").sum("follower_count").show()
                         df.select(count(df.category)).show()
-                        howdf.printSchema()
+                        df.printSchema()
 
                         df.write() \
                         .mode("append") \
