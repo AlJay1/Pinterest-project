@@ -1,9 +1,14 @@
 import boto3
 import json
+import os
+import sys
 import uuid
 from json import loads
 from kafka import KafkaConsumer
-
+from pyspark.sql import SparkSession
+from pyspark import SparkContext, SparkConf
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
 
 
 class Consumer():
@@ -53,9 +58,48 @@ class Consumer():
             #creating a new object in the S3 bucket for each message
             data_object = self.s3_resource.Object(self.s3_bucket_name, f"message_{number}.json")
             #encoding message into bytes
-            data_object.put(Body=(bytes(json.dumps(batch_message.value).encode("utf-8"))))          
+            data_object.put(Body=(bytes(json.dumps(batch_message.value).encode("utf-8"))))      
+
+
+    def clean_data(self):
+        '''
+        Cleans data from the S3 bucket and displayed in a dataframe.
+        '''
+        os.environ["PYSPARK_PYTHON"]=sys.executable
+        os.environ["PYSPARK_DRIVER_PYTHON"]=sys.executable
+        os.environ["PYSPARK_SUBMIT_ARGS"]="--packages com.amazonaws:aws-java-sdk-s3:1.12.196,org.apache.hadoop:hadoop-aws:3.3.1 pyspark-shell"
+
+        #start the spark session
+        config = SparkConf() \
+        .setAppName("S3toSpark") \
+
+        sc = SparkContext(conf=config)
+        spark = SparkSession(sc).builder.appName("S3App").getOrCreate()
+        
+        #credentials provided for S3 bucket
+        hadoopConf = sc._jsc.hadoopConfiguration()
+        hadoopConf.set("fs.s3a.access.key", "AKIA26CQALL6FMRQXXHY")
+        hadoopConf.set("fs.s3a.secret.key", "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")
+        hadoopConf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") 
+        
+        #reads data from s3 bucket
+        df = spark.read.json(f"s3a://{self.s3_bucket_name}/*.json")
+        
+        #cleans data, removes null values
+        df = df.withColumn( "follower_count", regexp_replace(df.follower_count, "User Info Error", "N/A"))
+        df = df.withColumn("tag_list", regexp_replace(df["tag_list"], "N,o, ,T,a,g,s, ,A,v,a,i,l,a,b,l,e", "N/A"))
+        df = df.withColumn("image_src", regexp_replace(df["image_src"], "Image src error.", "N/A"))
+        df = df.withColumn("title", regexp_replace(df["title"], "No Title Data Available", "N/A"))
+        df = df.withColumn("description", regexp_replace(df["description"], "No description available Story format", "N/A"))
+        #cleans follower count and turns it into an integer
+        df = df.withColumn("follower_count", regexp_replace("follower_count", "k", "000"))
+        df = df.withColumn("follower_count", regexp_replace("follower_count", "M", "000000"))
+        df = df.withColumn("follower_count", col("follower_count").cast("integer"))
+
+        df.sort("follower_count").show()
 
 
 if __name__ == '__main__':
     test = Consumer()
     test.dump_data()
+    test.clean_data()
