@@ -55,7 +55,29 @@ The JSON data was embeddded in a dataframe and the null values were replaced for
 Also the follower_count column was turned into an integer.
 
 ## Milestone 5 - Apache Airflow
+With Apache Airflow, the data upload onto AWS and the cleaning operations were set to happen once a day.
+This is done by running the ```airflow.py``` file. 
 
+The permissions of the bucket had to be updated so files were deleted after 24 hours to prevent the same data being reloaded onto the dataframe.
+
+The DAG is shown below.
+
+```
+#creates DAG, scheduled to run once a day at midnight
+with DAG(dag_id='batch_consumer_dag',
+         default_args=default_args,
+         schedule_interval='0 0  * * *',
+         catchup=False,
+         tags=['batch_process']
+         ) as dag:
+    #runs the batch_consumer file. In if name == main block only has the functions dumping and cleaning the data
+
+    run_producer_script = BashOperator(
+        task_id='run_producer_file',
+        bash_command='cd ~/pinterest_project && python3 batch_consumer.py',
+        dag=dag)
+
+```
 
 ## Milestone 6 - Streaming: Kafka-Spark Integration
 
