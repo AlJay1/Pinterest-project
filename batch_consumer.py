@@ -78,8 +78,8 @@ class Consumer():
         
         #credentials provided for S3 bucket
         hadoopConf = sc._jsc.hadoopConfiguration()
-        hadoopConf.set("fs.s3a.access.key", "AKIA26CQALL6FMRQXXHY")
-        hadoopConf.set("fs.s3a.secret.key", "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")
+        hadoopConf.set("fs.s3a.access.key", "A*******************")
+        hadoopConf.set("fs.s3a.secret.key", "/**************************")
         hadoopConf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") 
         
         #reads data from s3 bucket
