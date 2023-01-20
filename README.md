@@ -81,8 +81,65 @@ with DAG(dag_id='batch_consumer_dag',
 
 ## Milestone 6 - Streaming: Kafka-Spark Integration
 
+To integrate Kafka and Spark, I created an environment that included Pyspark and Kafka integration packages.
+In the ```spark_stream``` function of the ```stream_consumer.py``` file, a stream session with these packages allowed me to read the data and process it from the Kafka topic,
+This is shown in the following code:
+
+
+```os.environ["PYSPARK_PYTHON"]=sys.executable
+                os.environ["PYSPARK_DRIVER_PYTHON"]=sys.executable
+                # Download spark sql kakfa package from Maven repository and submit to PySpark at runtime. 
+                os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1,org.postgresql:postgresql:42.5.1 pyspark-shell'
+
+                #create spark session
+                spark = SparkSession \
+                        .builder \
+                        .appName("KafkaStreaming ") \
+                        .getOrCreate()
+                #Only display Error messages in the console.
+                spark.sparkContext.setLogLevel("ERROR")
+                
+                # Construct a streaming DataFrame that reads from topic
+                stream_df = spark \
+                        .readStream \
+                        .format("kafka") \
+                        .option("kafka.bootstrap.servers", self.kafka_bootstrap_servers) \
+                        .option("subscribe", self.kafka_topic_name) \
+                        .option("startingOffsets", "earliest") \
+                        .load()
+```
+
 
 ## Milestone 7 - Spark Streaming
 
+Following this, a similar data cleaning process was carried out from the batch consumer.
+The data was put into a string and then into a schema which was definied with the correct data types for each column.
+The error values were replaced for each column and the follower count column was turned into an integer. 
+Once the data is consumed and processed, in the ```real_time``` function we perform two key computations:
+
+1. The total sum of followers in each micro-batch of data is calculated. This is done to keep track of the overall follower count in real-time.
+2. The follower count per category for each microbatch of data that occurs during real-time streaming is calculated.
 
 ## Milestone 8 - Streaming: Storage
+
+Finally the data was uploaded to a PostgreSQL database using the jdbc format..
+A database called ```pinterest_streaming``` was created and a table called ```experimental_data```.
+The columns for the table had to be defined in a similar to how the schema was. 
+
+The specific details for connecting to the database, such as the driver, url, dbtable, user, and password, are provided in the code below.
+
+
+
+```
+df.write() \
+    .mode("append") \
+    .format("jdbc") \
+    .option("driver,org.postgresql.Driver") \
+    .option("url", "jdbc:postgresql://172.18.240.165:5432/pinterest_streaming") \
+    .option("dbtable", "experimental_data") \
+    .option("user","postgres") \
+    .option("password", "AlJay1") \
+    .save()
+
+```
+The processed data is also output to the console for real-time monitoring using the "console" format and "append" output mode. The pipeline is started and the process is awaited for termination.
